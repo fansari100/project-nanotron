@@ -1,0 +1,65 @@
+# Project Nanotron — Strategy Configuration
+# Adaptive Test-Time Compute + MCTS Parameters
+
+[dynscaling]
+# Difficulty-based compute allocation
+easy_threshold = 0.3
+medium_threshold = 0.7
+hard_threshold = 1.0
+
+# Samples per difficulty level
+samples_easy = 1
+samples_medium = 8
+samples_hard = 64
+
+# Timeout constraints (microseconds)
+max_latency_easy_us = 10
+max_latency_medium_us = 100
+max_latency_hard_us = 1000
+
+[mcts]
+# Monte Carlo Tree Search parameters
+max_depth = 32
+max_width = 64
+exploration_constant = 1.414  # sqrt(2) for UCB1
+puct_constant = 1.5  # AlphaZero-style PUCT
+
+# Prior network
+prior_network_enabled = true
+prior_temperature = 1.0
+
+# Tree reuse between decisions
+tree_reuse = true
+tree_decay = 0.9
+
+[mcts.budget]
+# Compute budget per decision
+min_simulations = 100
+max_simulations = 10000
+time_budget_ms = 1.0  # 1ms max for single decision
+
+[prior_network]
+# Neural network for move prior estimation
+architecture = "transformer"
+hidden_dim = 256
+num_layers = 4
+num_heads = 8
+dropout = 0.1
+
+# Training
+learning_rate = 1e-4
+batch_size = 256
+max_epochs = 100
+
+[signals]
+# Signal generation parameters
+min_confidence = 0.6
+position_sizing = "kelly"  # Kelly criterion
+max_position_pct = 0.05  # 5% of portfolio per position
+
+[universe]
+# Trading universe
+asset_class = "equity"
+num_tickers = 500
+rebalance_frequency = "daily"
+

@@ -1,0 +1,72 @@
+[package]
+name = "nanotron-backend"
+version = "0.1.0"
+edition = "2021"
+authors = ["Nanotron Team"]
+description = "Rust backend for Project Nanotron - WebSocket streaming and shared memory interface"
+
+[lib]
+name = "nanotron_backend"
+path = "src/lib.rs"
+
+[[bin]]
+name = "nanotron-server"
+path = "src/main.rs"
+
+[dependencies]
+# Async runtime
+tokio = { version = "1.35", features = ["full"] }
+
+# Web framework
+axum = { version = "0.7", features = ["ws"] }
+tower = "0.4"
+tower-http = { version = "0.5", features = ["cors", "trace"] }
+
+# WebSocket
+tokio-tungstenite = "0.21"
+futures-util = "0.3"
+
+# Serialization
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+
+# Shared memory
+memmap2 = "0.9"
+shared_memory = "0.12"
+
+# Arrow interop
+arrow = { version = "50", features = ["ipc"] }
+
+# Metrics
+prometheus = "0.13"
+metrics = "0.21"
+metrics-exporter-prometheus = "0.13"
+
+# Logging
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+
+# Error handling
+thiserror = "1.0"
+anyhow = "1.0"
+
+# Time
+chrono = { version = "0.4", features = ["serde"] }
+
+# Configuration
+config = "0.14"
+
+[dev-dependencies]
+criterion = "0.5"
+proptest = "1.4"
+
+[profile.release]
+opt-level = 3
+lto = true
+codegen-units = 1
+panic = "abort"
+
+[profile.bench]
+inherits = "release"
+debug = true
+

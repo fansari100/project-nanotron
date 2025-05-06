@@ -1,0 +1,26 @@
+# Project Nanotron — Python Dependencies
+# For JAX engine and data layer
+
+# JAX (GPU accelerated)
+jax[cuda12]>=0.4.20
+flax>=0.8.0
+optax>=0.1.7
+chex>=0.1.8
+
+# Arrow for zero-copy IPC
+pyarrow>=14.0.0
+
+# Numerical computing
+numpy>=1.26.0
+
+# KDB+ interface (optional)
+qPython>=2.0.0
+
+# Testing
+pytest>=7.0.0
+pytest-benchmark>=4.0.0
+
+# Development
+ipython>=8.0.0
+jupyter>=1.0.0
+

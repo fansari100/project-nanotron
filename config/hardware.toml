@@ -1,0 +1,48 @@
+# Project Nanotron — Hardware Configuration
+# Optimized for Single-Node B200 Quantitative Engine
+
+[gpu]
+device = "NVIDIA B200"
+memory_gb = 192
+bandwidth_tb_s = 8.0
+mig_enabled = false  # Full chip for single optimization tree
+compute_capability = "10.0"  # Blackwell
+
+[gpu.tensor_cores]
+generation = 5
+fp4_enabled = true
+fp8_enabled = true
+transformer_engine_gen = 2
+
+[storage]
+nvme_count = 4
+nvme_capacity_tb = 4
+raid_level = 0
+sequential_read_gb_s = 50.0
+gpudirect_storage = true
+
+[storage.paths]
+tick_data = "/mnt/nvme_raid/tick_data"
+arrow_cache = "/mnt/nvme_raid/arrow_cache"
+model_checkpoints = "/mnt/nvme_raid/models"
+
+[interconnect]
+pcie_generation = 5  # 6.0 when available
+lanes = 16
+bandwidth_gb_s = 64.0  # PCIe 5.0 x16
+
+[memory]
+system_ram_gb = 256
+ddr_generation = 5
+numa_nodes = 1  # Single socket for lowest latency
+
+[network]
+primary_interface = "enp1s0"
+backup_interface = "enp2s0"
+kernel_bypass = true  # DPDK / io_uring
+exchange_connections = [
+    { name = "NYSE", ip = "10.0.0.1", port = 9000 },
+    { name = "NASDAQ", ip = "10.0.0.2", port = 9001 },
+    { name = "CME", ip = "10.0.0.3", port = 9002 },
+]
+

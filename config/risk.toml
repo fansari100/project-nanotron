@@ -1,0 +1,59 @@
+# Project Nanotron — Risk Configuration
+# Formal Verification Constraints (Frama-C Compatible)
+
+[limits]
+# Hard limits — mathematically verified by Frama-C
+max_order_notional_usd = 1_000_000      # $1M per order
+max_position_notional_usd = 10_000_000  # $10M per position
+max_portfolio_notional_usd = 100_000_000  # $100M total
+
+# Rate limits
+max_orders_per_second = 1000
+max_orders_per_minute = 10000
+max_orders_per_day = 100000
+
+# Cancel limits (to prevent quote stuffing flags)
+max_cancel_rate = 0.9  # 90% cancel rate max
+
+[risk_checks]
+# Pre-trade checks (all must pass)
+check_notional = true
+check_position_limit = true
+check_rate_limit = true
+check_self_trade = true
+check_fat_finger = true
+check_market_hours = true
+
+# Fat finger thresholds
+fat_finger_price_deviation = 0.05  # 5% from mid
+fat_finger_size_multiple = 10.0    # 10x normal size
+
+[circuit_breakers]
+# Portfolio-level circuit breakers
+max_daily_loss_pct = 0.02           # 2% daily loss
+max_drawdown_pct = 0.05             # 5% drawdown
+max_var_breach_count = 3            # 3 VaR breaches
+
+# Action on breach
+on_breach = "halt_and_flatten"       # Options: warn, halt, halt_and_flatten
+
+[formal_verification]
+# Frama-C annotations for C++ execution layer
+enabled = true
+prove_no_overflow = true
+prove_bounds_check = true
+prove_no_null_deref = true
+
+# Custom predicates
+predicates = [
+    "order_notional <= max_order_notional_usd",
+    "position_notional <= max_position_notional_usd",
+    "portfolio_notional <= max_portfolio_notional_usd",
+]
+
+[monitoring]
+# Real-time risk monitoring
+metrics_interval_ms = 100
+alert_channels = ["slack", "pagerduty", "email"]
+dashboard_enabled = true
+

@@ -20,3 +20,21 @@ build/
 target/
 _build/
 
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+htmlcov/
+.coverage
+.coverage.*
+coverage.xml
+*.cover
+.tox/
+
+Cargo.lock
+
+frontend/.next/
+frontend/out/
+
+artifacts/
+.cache/
+

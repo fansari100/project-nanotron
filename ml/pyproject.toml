@@ -1,0 +1,31 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "nanotron-ml"
+version = "0.1.0"
+description = "ML models, RL execution, LLM signals, and serving for project-nanotron."
+requires-python = ">=3.11"
+dependencies = [
+    "numpy>=1.26",
+    "pandas>=2.2",
+]
+
+[project.optional-dependencies]
+torch = ["torch>=2.2", "torchsde>=0.2"]
+rl = ["gymnasium>=0.29"]
+llm = ["httpx>=0.27"]
+dev = [
+    "pytest>=8.0",
+    "pytest-cov>=4.1",
+    "ruff>=0.4",
+]
+all = ["nanotron-ml[torch,rl,llm,dev]"]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+addopts = "-q --strict-markers"
+testpaths = ["tests"]

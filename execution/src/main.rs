@@ -1,123 +1,148 @@
 //! Project Nanotron — Rust Backend Server
 //!
-//! WebSocket server for streaming data to frontend.
-//! Reads from shared memory (signals from Mojo/JAX engine).
+//! Streams typed messages from the strategy core (via shared memory) to
+//! browser clients over WebSocket. Exposes JSON status and Prometheus
+//! metrics for the operator dashboard and for k8s liveness/readiness.
 
-use std::sync::Arc;
 use std::net::SocketAddr;
+use std::sync::Arc;
 
 use axum::{
-    routing::get,
-    Router,
-    extract::{State, ws::{WebSocket, WebSocketUpgrade, Message}},
+    extract::{ws::WebSocketUpgrade, State},
     response::IntoResponse,
-    Json,
+    routing::get,
+    Json, Router,
 };
-use tower_http::cors::{CorsLayer, Any};
-use tracing::{info, error, Level};
-use tracing_subscriber::FmtSubscriber;
 use tokio::sync::broadcast;
-use futures_util::{StreamExt, SinkExt};
+use tower_http::cors::{Any, CorsLayer};
+use tower_http::trace::TraceLayer;
+use tracing::{info, Level};
+use tracing_subscriber::FmtSubscriber;
 
 use nanotron_backend::{
-    AppState, Metrics, TradingSignal, EngineStatus, OrderBook, PortfolioSummary,
     shared_memory::SignalReader,
+    websocket::{handle_socket, WsMessage},
+    AppState, Metrics,
 };
 
-/// WebSocket message types
-#[derive(Debug, Clone, serde::Serialize)]
-#[serde(tag = "type")]
-enum WsMessage {
-    Signal(TradingSignal),
-    OrderBook(OrderBook),
-    Status(EngineStatus),
-    Portfolio(PortfolioSummary),
-}
+const DEFAULT_BIND: &str = "0.0.0.0:8080";
+const SHM_PATH: &str = "/nanotron_signals";
+const BROADCAST_CAPACITY: usize = 1024;
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
-    // Initialize logging
     let subscriber = FmtSubscriber::builder()
         .with_max_level(Level::INFO)
         .finish();
     tracing::subscriber::set_global_default(subscriber)?;
-    
-    info!("Starting Nanotron Backend Server...");
-    
-    // Initialize metrics
+
+    let bind: SocketAddr = std::env::var("NANOTRON_BIND")
+        .unwrap_or_else(|_| DEFAULT_BIND.into())
+        .parse()?;
+
+    info!("starting nanotron backend on {bind}");
+
     let metrics = Arc::new(Metrics::new());
-    
-    // Initialize signal reader
-    let signal_reader = Arc::new(SignalReader::new("/nanotron_signals")?);
-    
-    // Create broadcast channel for WebSocket clients
-    let (tx, _rx) = broadcast::channel::<WsMessage>(1000);
-    let tx = Arc::new(tx);
-    
-    // Spawn signal reading task
-    let tx_clone = tx.clone();
-    let signal_reader_clone = signal_reader.clone();
-    let metrics_clone = metrics.clone();
-    
-    tokio::spawn(async move {
-        loop {
-            if let Some(signal) = signal_reader_clone.read() {
-                metrics_clone.record_signal(signal.latency_us);
-                
-                if signal.direction != 0 {
-                    let _ = tx_clone.send(WsMessage::Signal(signal));
-                }
-            }
-            
-            // Small yield to avoid busy loop
-            tokio::time::sleep(tokio::time::Duration::from_micros(100)).await;
-        }
-    });
-    
-    // Spawn status update task
-    let tx_clone = tx.clone();
-    let metrics_clone = metrics.clone();
-    
-    tokio::spawn(async move {
-        loop {
-            let status = metrics_clone.get_status();
-            let _ = tx_clone.send(WsMessage::Status(status));
-            tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
-        }
-    });
-    
-    // Create app state
+    let signal_reader = Arc::new(SignalReader::new(SHM_PATH)?);
+    if !signal_reader.is_attached() {
+        info!("producer at /dev/shm{SHM_PATH} not present — server starts in detached mode");
+    }
+
+    let (tx, _rx) = broadcast::channel::<WsMessage>(BROADCAST_CAPACITY);
+
+    spawn_signal_pump(tx.clone(), signal_reader.clone(), metrics.clone());
+    spawn_status_pump(tx.clone(), metrics.clone());
+
     let state = Arc::new(AppState {
         metrics: metrics.clone(),
-        signal_reader,
+        signal_reader: signal_reader.clone(),
+        broadcast_tx: tx,
     });
-    
-    // Build router
+
     let app = Router::new()
         .route("/", get(index))
         .route("/health", get(health))
+        .route("/ready", get(ready))
         .route("/status", get(status))
-        .route("/ws", get(|ws: WebSocketUpgrade| async move {
-            ws.on_upgrade(|socket| handle_websocket(socket, tx.subscribe()))
-        }))
+        .route("/metrics", get(metrics_endpoint))
+        .route("/ws", get(ws_upgrade))
         .with_state(state)
-        .layer(CorsLayer::new().allow_origin(Any).allow_methods(Any));
-    
-    // Start server
-    let addr = SocketAddr::from(([0, 0, 0, 0], 8080));
-    info!("Listening on {}", addr);
-    
-    let listener = tokio::net::TcpListener::bind(addr).await?;
-    axum::serve(listener, app).await?;
-    
+        .layer(TraceLayer::new_for_http())
+        .layer(
+            CorsLayer::new()
+                .allow_origin(Any)
+                .allow_methods(Any)
+                .allow_headers(Any),
+        );
+
+    let listener = tokio::net::TcpListener::bind(bind).await?;
+    info!("listening on {bind}");
+    axum::serve(listener, app)
+        .with_graceful_shutdown(shutdown_signal())
+        .await?;
     Ok(())
+}
+
+fn spawn_signal_pump(
+    tx: broadcast::Sender<WsMessage>,
+    reader: Arc<SignalReader>,
+    metrics: Arc<Metrics>,
+) {
+    tokio::spawn(async move {
+        // Adaptive backoff: tight loop while data is flowing, exponential
+        // back-off up to 5 ms when the producer is idle. Avoids burning
+        // CPU when detached or quiet without stretching the latency tail
+        // when active.
+        let mut idle_us: u64 = 100;
+        loop {
+            if let Some(signal) = reader.read() {
+                metrics.record_signal(signal.latency_us);
+                idle_us = 100;
+                if signal.direction != 0 {
+                    let _ = tx.send(WsMessage::Signal(signal));
+                }
+            } else {
+                tokio::time::sleep(tokio::time::Duration::from_micros(idle_us)).await;
+                idle_us = (idle_us * 2).min(5_000);
+            }
+        }
+    });
+}
+
+fn spawn_status_pump(tx: broadcast::Sender<WsMessage>, metrics: Arc<Metrics>) {
+    tokio::spawn(async move {
+        let mut tick = tokio::time::interval(tokio::time::Duration::from_secs(1));
+        loop {
+            tick.tick().await;
+            let _ = tx.send(WsMessage::Status(metrics.get_status()));
+        }
+    });
+}
+
+async fn shutdown_signal() {
+    let ctrl_c = async {
+        let _ = tokio::signal::ctrl_c().await;
+    };
+    #[cfg(unix)]
+    let term = async {
+        use tokio::signal::unix::{signal, SignalKind};
+        if let Ok(mut s) = signal(SignalKind::terminate()) {
+            s.recv().await;
+        }
+    };
+    #[cfg(not(unix))]
+    let term = std::future::pending::<()>();
+    tokio::select! {
+        _ = ctrl_c => info!("ctrl-c received"),
+        _ = term => info!("SIGTERM received"),
+    }
 }
 
 async fn index() -> impl IntoResponse {
     Json(serde_json::json!({
         "name": "Nanotron Backend",
-        "version": "0.1.0",
-        "endpoints": ["/health", "/status", "/ws"]
+        "version": env!("CARGO_PKG_VERSION"),
+        "endpoints": ["/health", "/ready", "/status", "/metrics", "/ws"]
     }))
 }
 
@@ -125,38 +150,35 @@ async fn health() -> impl IntoResponse {
     Json(serde_json::json!({ "status": "healthy" }))
 }
 
+async fn ready(State(state): State<Arc<AppState>>) -> impl IntoResponse {
+    let attached = state.signal_reader.is_attached();
+    let body = serde_json::json!({
+        "ready": attached,
+        "producer_attached": attached,
+    });
+    if attached {
+        (axum::http::StatusCode::OK, Json(body))
+    } else {
+        (axum::http::StatusCode::SERVICE_UNAVAILABLE, Json(body))
+    }
+}
+
 async fn status(State(state): State<Arc<AppState>>) -> impl IntoResponse {
     Json(state.metrics.get_status())
 }
 
-async fn handle_websocket(
-    socket: WebSocket,
-    mut rx: broadcast::Receiver<WsMessage>,
-) {
-    let (mut sender, mut receiver) = socket.split();
-    
-    // Spawn task to forward messages to client
-    let send_task = tokio::spawn(async move {
-        while let Ok(msg) = rx.recv().await {
-            if let Ok(json) = serde_json::to_string(&msg) {
-                if sender.send(Message::Text(json)).await.is_err() {
-                    break;
-                }
-            }
-        }
-    });
-    
-    // Handle incoming messages from client
-    while let Some(Ok(msg)) = receiver.next().await {
-        match msg {
-            Message::Text(text) => {
-                info!("Received from client: {}", text);
-            }
-            Message::Close(_) => break,
-            _ => {}
-        }
-    }
-    
-    send_task.abort();
+async fn metrics_endpoint(State(state): State<Arc<AppState>>) -> impl IntoResponse {
+    (
+        [(axum::http::header::CONTENT_TYPE, "text/plain; version=0.0.4")],
+        state.metrics.render_prometheus(),
+    )
 }
 
+async fn ws_upgrade(
+    ws: WebSocketUpgrade,
+    State(state): State<Arc<AppState>>,
+) -> impl IntoResponse {
+    let rx = state.broadcast_tx.subscribe();
+    let metrics = state.metrics.clone();
+    ws.on_upgrade(move |socket| handle_socket(socket, rx, metrics))
+}

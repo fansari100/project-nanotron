@@ -1,17 +1,19 @@
 //! Project Nanotron — Rust Backend Library
-//! 
+//!
 //! Provides:
 //! - Shared memory interface for reading signals
 //! - WebSocket streaming to frontend
 //! - Metrics collection
 
-use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Arc;
 use thiserror::Error;
 
+pub mod metrics;
 pub mod shared_memory;
 pub mod websocket;
-pub mod metrics;
+
+pub use metrics::Metrics;
+pub use websocket::WsMessage;
 
 /// Error types for Nanotron backend
 #[derive(Error, Debug)]
@@ -164,61 +166,10 @@ pub struct EngineStatus {
     pub uptime_seconds: u64,
 }
 
-/// Global metrics
-pub struct Metrics {
-    pub signals_count: AtomicU64,
-    pub orders_count: AtomicU64,
-    pub latency_sum_us: AtomicU64,
-    pub start_time: std::time::Instant,
-}
-
-impl Metrics {
-    pub fn new() -> Self {
-        Self {
-            signals_count: AtomicU64::new(0),
-            orders_count: AtomicU64::new(0),
-            latency_sum_us: AtomicU64::new(0),
-            start_time: std::time::Instant::now(),
-        }
-    }
-    
-    pub fn record_signal(&self, latency_us: i64) {
-        self.signals_count.fetch_add(1, Ordering::Relaxed);
-        self.latency_sum_us.fetch_add(latency_us as u64, Ordering::Relaxed);
-    }
-    
-    pub fn record_order(&self) {
-        self.orders_count.fetch_add(1, Ordering::Relaxed);
-    }
-    
-    pub fn get_status(&self) -> EngineStatus {
-        let signals = self.signals_count.load(Ordering::Relaxed);
-        let orders = self.orders_count.load(Ordering::Relaxed);
-        let latency_sum = self.latency_sum_us.load(Ordering::Relaxed);
-        
-        EngineStatus {
-            running: true,
-            signals_generated: signals,
-            orders_sent: orders,
-            avg_latency_us: if signals > 0 {
-                latency_sum as f64 / signals as f64
-            } else {
-                0.0
-            },
-            uptime_seconds: self.start_time.elapsed().as_secs(),
-        }
-    }
-}
-
-impl Default for Metrics {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
-/// Application state
+/// Application state shared across handlers via `Arc`.
 pub struct AppState {
     pub metrics: Arc<Metrics>,
     pub signal_reader: Arc<shared_memory::SignalReader>,
+    pub broadcast_tx: tokio::sync::broadcast::Sender<WsMessage>,
 }
 

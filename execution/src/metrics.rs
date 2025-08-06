@@ -81,12 +81,7 @@ impl Metrics {
         let signals = self.signals_count.load(Ordering::Relaxed);
         let orders = self.orders_count.load(Ordering::Relaxed);
 
-        let avg_latency_us = self
-            .latency_us
-            .lock()
-            .ok()
-            .map(|q| q.mean())
-            .unwrap_or(0.0);
+        let avg_latency_us = self.latency_us.lock().ok().map(|q| q.mean()).unwrap_or(0.0);
 
         EngineStatus {
             running: true,
@@ -140,9 +135,18 @@ impl Metrics {
 
         s.push_str("# HELP nanotron_signal_latency_us Signal age at read time (microseconds).\n");
         s.push_str("# TYPE nanotron_signal_latency_us summary\n");
-        s.push_str(&format!("nanotron_signal_latency_us{{quantile=\"0.5\"}} {:.3}\n", p50));
-        s.push_str(&format!("nanotron_signal_latency_us{{quantile=\"0.99\"}} {:.3}\n", p99));
-        s.push_str(&format!("nanotron_signal_latency_us_sum {:.3}\n", mean * signals as f64));
+        s.push_str(&format!(
+            "nanotron_signal_latency_us{{quantile=\"0.5\"}} {:.3}\n",
+            p50
+        ));
+        s.push_str(&format!(
+            "nanotron_signal_latency_us{{quantile=\"0.99\"}} {:.3}\n",
+            p99
+        ));
+        s.push_str(&format!(
+            "nanotron_signal_latency_us_sum {:.3}\n",
+            mean * signals as f64
+        ));
         s.push_str(&format!("nanotron_signal_latency_us_count {}\n", signals));
 
         s
@@ -229,7 +233,8 @@ impl PSquare {
         if self.count <= 5 {
             self.q[(self.count - 1) as usize] = x;
             if self.count == 5 {
-                self.q.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
+                self.q
+                    .sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
             }
             return;
         }
@@ -282,8 +287,7 @@ impl PSquare {
         let nip = self.n[i + 1];
         let nim = self.n[i - 1];
         qi + d / (nip - nim)
-            * ((ni - nim + d) * (qip - qi) / (nip - ni)
-                + (nip - ni - d) * (qi - qim) / (ni - nim))
+            * ((ni - nim + d) * (qip - qi) / (nip - ni) + (nip - ni - d) * (qi - qim) / (ni - nim))
     }
 
     fn linear(&self, i: usize, d: f64) -> f64 {

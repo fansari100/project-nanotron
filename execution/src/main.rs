@@ -169,15 +169,15 @@ async fn status(State(state): State<Arc<AppState>>) -> impl IntoResponse {
 
 async fn metrics_endpoint(State(state): State<Arc<AppState>>) -> impl IntoResponse {
     (
-        [(axum::http::header::CONTENT_TYPE, "text/plain; version=0.0.4")],
+        [(
+            axum::http::header::CONTENT_TYPE,
+            "text/plain; version=0.0.4",
+        )],
         state.metrics.render_prometheus(),
     )
 }
 
-async fn ws_upgrade(
-    ws: WebSocketUpgrade,
-    State(state): State<Arc<AppState>>,
-) -> impl IntoResponse {
+async fn ws_upgrade(ws: WebSocketUpgrade, State(state): State<Arc<AppState>>) -> impl IntoResponse {
     let rx = state.broadcast_tx.subscribe();
     let metrics = state.metrics.clone();
     ws.on_upgrade(move |socket| handle_socket(socket, rx, metrics))

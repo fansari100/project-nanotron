@@ -49,11 +49,7 @@ impl SignalReader {
         let path = format!("/dev/shm{}", shm_path);
         match OpenOptions::new().read(true).open(&path) {
             Ok(file) => {
-                let mmap = unsafe {
-                    MmapOptions::new()
-                        .map(&file)
-                        .map_err(NanotronError::Io)?
-                };
+                let mmap = unsafe { MmapOptions::new().map(&file).map_err(NanotronError::Io)? };
                 Ok(Self {
                     mmap: Some(mmap),
                     cursor: AtomicU64::new(0),
@@ -102,8 +98,7 @@ impl SignalReader {
             return None;
         }
 
-        let offset = RingBufferHeader::SIZE
-            + (cur % max_records) as usize * record_size as usize;
+        let offset = RingBufferHeader::SIZE + (cur % max_records) as usize * record_size as usize;
         let end = offset + TradingSignal::SIZE;
         if end > mmap.len() {
             return None;

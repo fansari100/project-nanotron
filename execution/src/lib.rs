@@ -20,13 +20,13 @@ pub use websocket::WsMessage;
 pub enum NanotronError {
     #[error("Shared memory error: {0}")]
     SharedMemory(String),
-    
+
     #[error("WebSocket error: {0}")]
     WebSocket(String),
-    
+
     #[error("Serialization error: {0}")]
     Serialization(#[from] serde_json::Error),
-    
+
     #[error("IO error: {0}")]
     Io(#[from] std::io::Error),
 }
@@ -47,13 +47,13 @@ pub struct TradingSignal {
 
 impl TradingSignal {
     pub const SIZE: usize = 32;
-    
+
     /// Deserialize from bytes
     pub fn from_bytes(bytes: &[u8]) -> Option<Self> {
         if bytes.len() < Self::SIZE {
             return None;
         }
-        
+
         Some(Self {
             ticker_id: u32::from_le_bytes(bytes[0..4].try_into().ok()?),
             direction: bytes[4] as i8,
@@ -68,7 +68,7 @@ impl TradingSignal {
                 .as_nanos() as u64,
         })
     }
-    
+
     /// Serialize to bytes
     pub fn to_bytes(&self) -> [u8; Self::SIZE] {
         let mut bytes = [0u8; Self::SIZE];
@@ -81,7 +81,7 @@ impl TradingSignal {
         bytes[20..28].copy_from_slice(&self.latency_us.to_le_bytes());
         bytes
     }
-    
+
     /// Get direction as string
     pub fn direction_str(&self) -> &'static str {
         match self.direction {
@@ -117,14 +117,14 @@ impl OrderBook {
         }
         (self.bids[0].price + self.asks[0].price) / 2.0
     }
-    
+
     pub fn spread(&self) -> f64 {
         if self.bids.is_empty() || self.asks.is_empty() {
             return 0.0;
         }
         self.asks[0].price - self.bids[0].price
     }
-    
+
     pub fn order_imbalance(&self) -> f64 {
         let total_bid: i32 = self.bids.iter().map(|l| l.size).sum();
         let total_ask: i32 = self.asks.iter().map(|l| l.size).sum();
@@ -172,4 +172,3 @@ pub struct AppState {
     pub signal_reader: Arc<shared_memory::SignalReader>,
     pub broadcast_tx: tokio::sync::broadcast::Sender<WsMessage>,
 }
-

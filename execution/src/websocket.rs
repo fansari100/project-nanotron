@@ -13,8 +13,8 @@ use futures_util::{SinkExt, StreamExt};
 use tokio::sync::broadcast;
 use tracing::{debug, warn};
 
-use crate::{EngineStatus, OrderBook, PortfolioSummary, TradingSignal};
 use crate::metrics::Metrics;
+use crate::{EngineStatus, OrderBook, PortfolioSummary, TradingSignal};
 
 /// Discriminated union of everything that can flow over the wire.
 #[derive(Debug, Clone, serde::Serialize)]

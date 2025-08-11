@@ -59,6 +59,15 @@ config = "0.14"
 [dev-dependencies]
 criterion = "0.5"
 proptest = "1.4"
+tempfile = "3.10"
+
+[[bench]]
+name = "serde"
+harness = false
+
+[[bench]]
+name = "ring_buffer"
+harness = false
 
 [profile.release]
 opt-level = 3

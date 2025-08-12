@@ -59,7 +59,7 @@ proptest! {
             reasoning_depth: 1, latency_us: 1, timestamp_ns: 0,
         };
         let mut buf = s.to_bytes().to_vec();
-        buf.extend(std::iter::repeat(0xAB).take(extra));
+        buf.extend(std::iter::repeat_n(0xAB, extra));
         prop_assert!(TradingSignal::from_bytes(&buf).is_some());
     }
 

@@ -34,8 +34,10 @@ serde_json = "1.0"
 memmap2 = "0.9"
 shared_memory = "0.12"
 
-# Arrow interop
-arrow = { version = "50", features = ["ipc"] }
+# Arrow interop. Pinned >= 54 because arrow-arith 50.0.0's local
+# `ChronoDateExt` trait collides with the `Datelike` methods now
+# inherent on chrono >= 0.4.30, producing E0034 ambiguity errors.
+arrow = { version = "54", features = ["ipc"] }
 
 # Metrics
 prometheus = "0.13"

@@ -1,0 +1,64 @@
+{
+  "title": "Nanotron — Operator Overview",
+  "uid": "nanotron-overview",
+  "tags": ["nanotron"],
+  "schemaVersion": 38,
+  "time": {"from": "now-30m", "to": "now"},
+  "refresh": "10s",
+  "panels": [
+    {
+      "id": 1,
+      "type": "timeseries",
+      "title": "Signals / sec (data plane)",
+      "targets": [{"expr": "rate(nanotron_signals_total[1m])"}],
+      "gridPos": {"x": 0, "y": 0, "w": 12, "h": 6}
+    },
+    {
+      "id": 2,
+      "type": "timeseries",
+      "title": "Signal latency (p50 / p99) — µs",
+      "targets": [
+        {"expr": "nanotron_signal_latency_us{quantile=\"0.5\"}", "legendFormat": "p50"},
+        {"expr": "nanotron_signal_latency_us{quantile=\"0.99\"}", "legendFormat": "p99"}
+      ],
+      "gridPos": {"x": 12, "y": 0, "w": 12, "h": 6}
+    },
+    {
+      "id": 3,
+      "type": "stat",
+      "title": "WS clients",
+      "targets": [{"expr": "nanotron_ws_clients"}],
+      "gridPos": {"x": 0, "y": 6, "w": 6, "h": 4}
+    },
+    {
+      "id": 4,
+      "type": "stat",
+      "title": "WS send errors / 5m",
+      "targets": [{"expr": "increase(nanotron_ws_send_errors_total[5m])"}],
+      "gridPos": {"x": 6, "y": 6, "w": 6, "h": 4}
+    },
+    {
+      "id": 5,
+      "type": "timeseries",
+      "title": "Control-plane request rate by endpoint",
+      "targets": [
+        {"expr": "rate(nanotron_cp_requests_total[1m])", "legendFormat": "{{path}}"}
+      ],
+      "gridPos": {"x": 12, "y": 6, "w": 12, "h": 6}
+    },
+    {
+      "id": 6,
+      "type": "timeseries",
+      "title": "Orders sent",
+      "targets": [{"expr": "rate(nanotron_orders_total[1m])"}],
+      "gridPos": {"x": 0, "y": 12, "w": 12, "h": 6}
+    },
+    {
+      "id": 7,
+      "type": "timeseries",
+      "title": "Process uptime",
+      "targets": [{"expr": "nanotron_uptime_seconds"}],
+      "gridPos": {"x": 12, "y": 12, "w": 12, "h": 6}
+    }
+  ]
+}

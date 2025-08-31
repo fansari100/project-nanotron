@@ -1,0 +1,30 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+scrape_configs:
+  - job_name: data-plane
+    metrics_path: /metrics
+    static_configs:
+      - targets: ["data-plane:8080"]
+        labels:
+          service: data-plane
+
+  - job_name: control-plane
+    metrics_path: /metrics
+    static_configs:
+      - targets: ["control-plane:8090"]
+        labels:
+          service: control-plane
+
+  - job_name: kafka-jmx
+    static_configs:
+      - targets: ["kafka:7071"]
+
+  - job_name: postgres
+    static_configs:
+      - targets: ["postgres-exporter:9187"]
+
+  - job_name: redis
+    static_configs:
+      - targets: ["redis-exporter:9121"]

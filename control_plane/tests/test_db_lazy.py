@@ -21,7 +21,7 @@ def test_kafka_modules_import_without_aiokafka():
 def test_postgres_pool_raises_clear_error_without_driver():
     from nanotron_control.db.postgres import PostgresPool
 
-    pool = PostgresPool(dsn="postgresql://localhost/none")
+    PostgresPool(dsn="postgresql://localhost/none")
     with pytest.raises(RuntimeError):
         # We can't easily run an event loop here without async machinery,
         # but constructing must succeed; the connect() call would fail.

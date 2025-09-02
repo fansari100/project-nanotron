@@ -36,7 +36,10 @@ target-version = "py311"
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "N", "W", "UP", "B", "SIM"]
-ignore = ["E501"]
+# B008: FastAPI uses `Depends(...)` and similar callables in argument
+# defaults as part of its dependency-injection pattern; flagging every
+# one of them is noise.
+ignore = ["E501", "B008"]
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"

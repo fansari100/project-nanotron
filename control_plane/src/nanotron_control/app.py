@@ -8,7 +8,7 @@ isolated app per test without monkeypatching globals.
 from __future__ import annotations
 
 import logging
-from contextlib import asynccontextmanager
+from contextlib import asynccontextmanager, suppress
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -73,14 +73,12 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     @app.middleware("http")
     async def _count_requests(request, call_next):
         response = await call_next(request)
-        try:
+        with suppress(Exception):
             app.state.requests_total.labels(
                 method=request.method,
                 path=request.url.path,
                 status=str(response.status_code),
             ).inc()
-        except Exception:
-            pass
         return response
 
     @app.get("/metrics", include_in_schema=False)

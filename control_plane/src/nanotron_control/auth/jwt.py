@@ -72,4 +72,4 @@ class JWTAuth:
         try:
             return decode_token(token, self.secret)
         except ValueError as e:
-            raise HTTPException(status.HTTP_401_UNAUTHORIZED, str(e))
+            raise HTTPException(status.HTTP_401_UNAUTHORIZED, str(e)) from e

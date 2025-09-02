@@ -38,7 +38,7 @@ async def transition(name: str, body: StrategyTransition, store: StoreDep):
     try:
         s = await store.transition_strategy(name, body.target)
     except ValueError as e:
-        raise HTTPException(status.HTTP_409_CONFLICT, str(e))
+        raise HTTPException(status.HTTP_409_CONFLICT, str(e)) from e
     if s is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, f"strategy {name!r} not found")
     return s

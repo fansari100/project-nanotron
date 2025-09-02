@@ -25,7 +25,7 @@ class Role(IntEnum):
     ADMIN = 3
 
     @classmethod
-    def parse(cls, name: str) -> "Role":
+    def parse(cls, name: str) -> Role:
         try:
             return cls[name.upper()]
         except KeyError as e:
@@ -37,7 +37,7 @@ def requires_role(min_role: Role, jwt_auth: JWTAuth):
         try:
             actual = Role.parse(claims.get("role", "VIEWER"))
         except ValueError as e:
-            raise HTTPException(status.HTTP_403_FORBIDDEN, str(e))
+            raise HTTPException(status.HTTP_403_FORBIDDEN, str(e)) from e
         if actual < min_role:
             raise HTTPException(
                 status.HTTP_403_FORBIDDEN,

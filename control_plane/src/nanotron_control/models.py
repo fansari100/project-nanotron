@@ -7,18 +7,18 @@ spec is the single source of truth for the React frontend's TS client.
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
-from enum import Enum
+from datetime import UTC, datetime
+from enum import StrEnum
 from typing import Literal
 
 from pydantic import BaseModel, Field, field_validator
 
 
 def _utcnow() -> datetime:
-    return datetime.now(timezone.utc)
+    return datetime.now(UTC)
 
 
-class StrategyState(str, Enum):
+class StrategyState(StrEnum):
     IDLE = "idle"
     RUNNING = "running"
     PAUSED = "paused"
@@ -77,7 +77,7 @@ class BacktestRequest(BaseModel):
         return v
 
 
-class BacktestRunStatus(str, Enum):
+class BacktestRunStatus(StrEnum):
     QUEUED = "queued"
     RUNNING = "running"
     COMPLETE = "complete"

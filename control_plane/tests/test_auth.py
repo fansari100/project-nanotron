@@ -2,7 +2,7 @@ import json
 import time
 
 import pytest
-from fastapi import FastAPI, Depends
+from fastapi import Depends, FastAPI
 from fastapi.testclient import TestClient
 
 from nanotron_control.auth.audit import AuditLogger

@@ -12,7 +12,7 @@ import asyncio
 import threading
 import tomllib
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 from .models import (
@@ -86,7 +86,7 @@ class Store:
 
     async def upsert_strategy(self, s: Strategy) -> Strategy:
         async with self._write_lock:
-            s.updated_at = datetime.now(timezone.utc)
+            s.updated_at = datetime.now(UTC)
             with self._read_lock:
                 self._strategies[s.name] = s
             return s
@@ -101,7 +101,7 @@ class Store:
                 if next_state is None:
                     raise ValueError(f"illegal transition {cur.state.value} -> {target}")
                 cur.state = next_state
-                cur.updated_at = datetime.now(timezone.utc)
+                cur.updated_at = datetime.now(UTC)
                 return cur
 
     def get_risk(self) -> RiskLimits:
@@ -110,7 +110,7 @@ class Store:
 
     async def update_risk(self, r: RiskLimits) -> RiskLimits:
         async with self._write_lock:
-            r.updated_at = datetime.now(timezone.utc)
+            r.updated_at = datetime.now(UTC)
             with self._read_lock:
                 self._risk = r
             return r
@@ -120,7 +120,7 @@ class Store:
             run_id=uuid.uuid4().hex[:12],
             strategy=req.strategy,
             status=BacktestRunStatus.QUEUED,
-            submitted_at=datetime.now(timezone.utc),
+            submitted_at=datetime.now(UTC),
         )
         async with self._write_lock:
             self._runs[run.run_id] = run

@@ -7,9 +7,9 @@ the OTel exporter and by the control plane's audit-log persistence.
 
 from __future__ import annotations
 
+from collections.abc import Iterable
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Iterable
 
 from .postgres import PostgresPool
 

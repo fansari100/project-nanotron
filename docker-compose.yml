@@ -1,0 +1,72 @@
+version: "3.9"
+
+# Local-dev stack.  In prod, the same three images are deployed by the
+# Helm chart in deploy/helm/.
+
+services:
+  data-plane:
+    build:
+      context: ./execution
+      dockerfile: Dockerfile
+    image: nanotron/data-plane:dev
+    container_name: nanotron-data-plane
+    environment:
+      NANOTRON_BIND: 0.0.0.0:8080
+      RUST_LOG: info,tower_http=info
+    ports:
+      - "8080:8080"
+    # The producer writes to /dev/shm/nanotron_signals; share the host
+    # tmpfs so the python smoke harness in scripts/ can drive the
+    # rust reader during local dev.
+    volumes:
+      - shm:/dev/shm
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:8080/health"]
+      interval: 5s
+      timeout: 2s
+      retries: 5
+    restart: unless-stopped
+
+  control-plane:
+    build:
+      context: ./control_plane
+      dockerfile: Dockerfile
+    image: nanotron/control-plane:dev
+    container_name: nanotron-control-plane
+    depends_on:
+      data-plane:
+        condition: service_healthy
+    environment:
+      NANOTRON_CP_DATA_PLANE_URL: http://data-plane:8080
+      NANOTRON_CP_BIND_PORT: "8090"
+      NANOTRON_CP_LOG_LEVEL: INFO
+    volumes:
+      - ./config:/app/config:ro
+    ports:
+      - "8090:8090"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8090/health')"]
+      interval: 5s
+      timeout: 2s
+      retries: 5
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    image: nanotron/frontend:dev
+    container_name: nanotron-frontend
+    depends_on:
+      - data-plane
+      - control-plane
+    ports:
+      - "3000:80"
+    restart: unless-stopped
+
+volumes:
+  shm:
+    driver: local
+    driver_opts:
+      type: tmpfs
+      device: tmpfs

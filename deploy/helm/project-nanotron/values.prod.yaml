@@ -1,0 +1,35 @@
+image:
+  pullPolicy: Always
+  tag: "0.1.0"
+
+dataPlane:
+  replicaCount: 4
+  resources:
+    requests: { cpu: "1",  memory: 1Gi }
+    limits:   { cpu: "4",  memory: 4Gi }
+  hpa:
+    minReplicas: 4
+    maxReplicas: 16
+    targetCPUUtilizationPercentage: 60
+
+controlPlane:
+  replicaCount: 3
+  resources:
+    requests: { cpu: 500m, memory: 512Mi }
+    limits:   { cpu: "2",  memory: 2Gi }
+  hpa:
+    minReplicas: 3
+    maxReplicas: 10
+
+frontend:
+  replicaCount: 3
+
+ingress:
+  enabled: true
+  className: nginx
+  host: nanotron.example.com
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+  tls:
+    - secretName: nanotron-tls
+      hosts: ["nanotron.example.com"]

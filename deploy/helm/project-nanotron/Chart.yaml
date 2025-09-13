@@ -1,0 +1,18 @@
+apiVersion: v2
+name: project-nanotron
+description: |
+  Project Nanotron — multi-language quantitative engine.
+  Deploys the Rust data-plane, the FastAPI control-plane, and the
+  React frontend behind a single ingress. The Mojo/JAX strategy core
+  ships as a sidecar to the data-plane and writes signals into a
+  shared emptyDir backed by tmpfs.
+type: application
+version: 0.1.0
+appVersion: "0.1.0"
+maintainers:
+  - name: Nanotron
+keywords:
+  - trading
+  - quant
+  - rust
+  - fastapi

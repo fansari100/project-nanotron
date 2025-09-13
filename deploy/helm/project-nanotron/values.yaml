@@ -1,0 +1,92 @@
+nameOverride: ""
+fullnameOverride: ""
+
+image:
+  repository: nanotron
+  pullPolicy: IfNotPresent
+  tag: "0.1.0"
+
+dataPlane:
+  enabled: true
+  image:
+    name: data-plane
+  replicaCount: 2
+  service:
+    type: ClusterIP
+    port: 8080
+  resources:
+    requests: { cpu: 500m, memory: 512Mi }
+    limits:   { cpu: "2",  memory: 2Gi }
+  env:
+    RUST_LOG: info
+  podAnnotations:
+    prometheus.io/scrape: "true"
+    prometheus.io/path: "/metrics"
+    prometheus.io/port: "8080"
+  hpa:
+    enabled: true
+    minReplicas: 2
+    maxReplicas: 8
+    targetCPUUtilizationPercentage: 70
+  podDisruptionBudget:
+    enabled: true
+    minAvailable: 1
+
+controlPlane:
+  enabled: true
+  image:
+    name: control-plane
+  replicaCount: 2
+  service:
+    type: ClusterIP
+    port: 8090
+  resources:
+    requests: { cpu: 200m, memory: 256Mi }
+    limits:   { cpu: "1",  memory: 1Gi }
+  env:
+    NANOTRON_CP_LOG_LEVEL: INFO
+  podAnnotations:
+    prometheus.io/scrape: "true"
+    prometheus.io/path: "/metrics"
+    prometheus.io/port: "8090"
+  hpa:
+    enabled: true
+    minReplicas: 2
+    maxReplicas: 6
+    targetCPUUtilizationPercentage: 70
+
+frontend:
+  enabled: true
+  image:
+    name: frontend
+  replicaCount: 2
+  service:
+    type: ClusterIP
+    port: 80
+  resources:
+    requests: { cpu: 50m,  memory: 64Mi }
+    limits:   { cpu: 200m, memory: 256Mi }
+
+ingress:
+  enabled: false
+  className: nginx
+  host: nanotron.local
+  tls: []
+  annotations: {}
+
+serviceAccount:
+  create: true
+  name: ""
+
+securityContext:
+  runAsNonRoot: true
+  runAsUser: 10001
+  fsGroup: 10001
+  seccompProfile:
+    type: RuntimeDefault
+
+containerSecurityContext:
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: true
+  capabilities:
+    drop: ["ALL"]

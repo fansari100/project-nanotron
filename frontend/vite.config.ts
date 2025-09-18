@@ -14,7 +14,9 @@ export default defineConfig({
   },
   build: {
     target: 'esnext',
-    minify: 'terser',
+    // Default Vite minifier (esbuild). `terser` was failing the build
+    // because it is an optional peer dep and was not in package.json.
+    minify: 'esbuild',
   },
 });
 

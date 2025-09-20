@@ -17,7 +17,9 @@
 #include <array>
 #include <span>
 #include <bit>
+#include <cerrno>
 #include <expected>
+#include <stdexcept>
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <netinet/tcp.h>
@@ -303,9 +305,10 @@ public:
         // Read from ring buffer (simplified)
         auto* header = static_cast<const RingBufferHeader*>(shm_ptr_);
         
-        // Check if new data available
-        uint64_t read_pos = header->read_pos.load(std::memory_order_acquire);
-        uint64_t write_pos = header->write_pos.load(std::memory_order_acquire);
+        // Check if new data available. The atomics are wrapped in
+        // CacheAligned<...>, so reach through `.value` to call .load().
+        uint64_t read_pos = header->read_pos.value.load(std::memory_order_acquire);
+        uint64_t write_pos = header->write_pos.value.load(std::memory_order_acquire);
         
         if (read_pos == write_pos) {
             return std::unexpected(EAGAIN);  // No new data

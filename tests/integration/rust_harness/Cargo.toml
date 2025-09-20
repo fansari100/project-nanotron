@@ -1,0 +1,11 @@
+[package]
+name = "ring-harness"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+nanotron_backend = { path = "../../../execution" }
+
+[[bin]]
+name = "ring-harness"
+path = "src/main.rs"

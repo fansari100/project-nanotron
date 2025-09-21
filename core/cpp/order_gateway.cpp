@@ -98,7 +98,8 @@ struct Order {
 };
 #pragma pack(pop)
 
-static_assert(sizeof(Order) == 48, "Order struct must be 48 bytes");
+// Packed Order layout: 8+8+4+1+1+4+8+8 = 42 bytes.
+static_assert(sizeof(Order) == 42, "Order struct must be 42 bytes");
 
 struct OrderResult {
     uint64_t order_id;

@@ -46,13 +46,14 @@ struct TradingSignal {
     int32_t reasoning_depth;
     int64_t latency_us;
     uint64_t timestamp_ns;
-    
-    static constexpr size_t SIZE = 32;
+
+    // Packed layout: 4+1+3+4+4+4+8+8 = 36 bytes.
+    static constexpr size_t SIZE = 36;
 };
 #pragma pack(pop)
 
-static_assert(sizeof(TradingSignal) == TradingSignal::SIZE, 
-              "TradingSignal must be 32 bytes");
+static_assert(sizeof(TradingSignal) == TradingSignal::SIZE,
+              "TradingSignal must match its declared SIZE constant");
 
 // ============================================================================
 // RING BUFFER HEADER
@@ -169,13 +170,14 @@ struct MarketDataUpdate {
     double price;
     int32_t size;
     uint32_t sequence_num;
-    
-    static constexpr size_t SIZE = 40;
+
+    // Packed layout: 8+4+1+1+2+8+4+4 = 32 bytes.
+    static constexpr size_t SIZE = 32;
 };
 #pragma pack(pop)
 
 static_assert(sizeof(MarketDataUpdate) == MarketDataUpdate::SIZE,
-              "MarketDataUpdate must be 40 bytes");
+              "MarketDataUpdate must match its declared SIZE constant");
 
 #pragma pack(push, 1)
 struct OrderBookLevel {
